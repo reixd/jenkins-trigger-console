@@ -39,7 +39,7 @@ class Trigger():
         self.sleep = int(arguments['--sleep'])
         self.encoding = arguments['--encoding']
         self.debug = arguments['--debug']
-        username = os.environ.get('REMOTE_JENKINS_USER') or os.arguments['--user']
+        username = os.environ.get('REMOTE_JENKINS_USER') or arguments['--user']
         password = os.environ.get('REMOTE_JENKINS_PASS') or arguments['--pass']
         self.crumb = None
         self.auth = None
