@@ -159,8 +159,8 @@ class Trigger():
 
             if not console_response.ok:
                 print(" Oppps we have an issue ... ")
-                print(console_response.content)
-                print(console_response.headers)
+                print(console_response.content.decode())
+                print(console_response.headers.decode())
                 exit(1)
 
             if content_length == 0:
@@ -169,7 +169,7 @@ class Trigger():
             else:
                 check_job_status = 0
                 # Print to screen console
-                print(console_response.content)
+                print(console_response.content.decode())
                 sleep(self.sleep)
                 start_at = int(console_response.headers.get("X-Text-Size"))
 
