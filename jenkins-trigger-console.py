@@ -39,12 +39,12 @@ class Trigger():
         self.sleep = int(arguments['--sleep'])
         self.encoding = arguments['--encoding']
         self.debug = arguments['--debug']
-        username = os.environ.get('REMOTE_JENKINS_USER') or arguments['--user']
-        password = os.environ.get('REMOTE_JENKINS_PASS') or arguments['--pass']
+        self.username = os.environ.get('REMOTE_JENKINS_USER') or arguments['--user']
+        self.password = os.environ.get('REMOTE_JENKINS_PASS') or arguments['--pass']
         self.crumb = None
         self.auth = None
-        if username and password:
-            self.auth = (username, password)
+        if self.username and self.password:
+            self.auth = (self.username, self.password)
             self.crumb = self.get_crumb()
         if self.encoding.lower() in ["html", "text"]:
             self.encoding = self.encoding.title()
@@ -99,7 +99,7 @@ class Trigger():
                 build_request = requests.get(build_url),
 
 
-        if build_request.status_code == 201:
+        if build_request.ok:
             queue_url =  build_request.headers['location'] +  "/api/json"
             print("Build is queued @ %s" % queue_url)
         else:
@@ -117,8 +117,15 @@ class Trigger():
 
         waiting_for_job = True
         while waiting_for_job:
-            queue_request = requests.get(queue_url)
-            if queue_request.json().get("why") != None:
+            if self.auth:
+                queue_request = requests.get(queue_url,
+                        auth=self.auth,
+                        headers=self.crumb
+                        )
+            else:
+                queue_request = requests.get(queue_url),            
+
+            if queue_request.ok and queue_request.json().get("why") != None:
                 print(" . Waiting for job to start because : %s" % queue_request.json().get("why"))
                 timer -= 1
                 sleep(self.sleep)
@@ -137,7 +144,7 @@ class Trigger():
     def console_output(self, job_number):
         # Get job console till job stops
         job_url = self.url + "/job/" + self.job + "/" + str(job_number) + "/logText/progressive" + self.encoding
-        print(" Getting Console output @ " % job_url)
+        print(" Getting Console output @ %s" % job_url)
         start_at = 0
         stream_open = True
         check_job_status = 0
@@ -150,7 +157,7 @@ class Trigger():
                 console_response = console_requests.post(job_url, data={'start': start_at })
             content_length = int(console_response.headers.get("Content-Length",-1))
 
-            if console_response.status_code != 200:
+            if not console_response.ok:
                 print(" Oppps we have an issue ... ")
                 print(console_response.content)
                 print(console_response.headers)
@@ -169,9 +176,11 @@ class Trigger():
             # No content for a while lets check if job is still running
             if check_job_status > 1:
                 job_status_url = self.url + "/job/" + self.job + "/" + str(job_number) + "/api/json"
-                job_requests = requests.get(job_status_url)
-                job_bulding= job_requests.json().get("building")
-                if not job_bulding:
+                if self.auth:
+                    job_requests = console_requests.post(job_status_url, data={'start': start_at }, auth=self.auth, headers=self.crumb)
+                else:
+                    job_requests = console_requests.post(job_status_url, data={'start': start_at })                
+                if job_requests.ok and not job_requests.json().get("building"):
                     # We are done
                     print("stream ended")
                     stream_open = False
