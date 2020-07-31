@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """jenkins-trigger-console.py
 
 Usage:
@@ -32,7 +32,7 @@ class Trigger():
         self.arguments = arguments
         self.debug = arguments['--debug']
         if self.debug:
-            print "argument = ", arguments
+            print("argument = %s" % arguments)
         self.url = arguments['--url']
         self.job = arguments['--job']
         self.timer = int(arguments['--wait-timer'])
@@ -49,13 +49,13 @@ class Trigger():
         if self.encoding.lower() in ["html", "text"]:
             self.encoding = self.encoding.title()
         else:
-            print " '%s' is not a valid encoding only support 'text', 'html'" % self.encoding
+            print(" '%s' is not a valid encoding only support 'text', 'html'" % self.encoding)
             exit(1)
         if arguments['--parameters']:
             try:
                 self.parameters = dict(u.split("=") for u in arguments['--parameters'].split(","))
-            except ValueError:
-                print "Your parameters should be in key=value format separated by ; for multi value i.e. x=1,b=2"
+            except ValueError as e:
+                print("Your parameters should be in key=value format separated by ; for multi value i.e. x=1,b=2")
                 exit(1)
         else:
             self.parameters = False
@@ -77,7 +77,7 @@ class Trigger():
         # Do a build request
         if self.parameters:
             build_url = self.url + "/job/" + self.job + "/buildWithParameters"
-            print "Triggering a build via post @ ", build_url
+            print("Triggering a build via post @ %s" % build_url)
             if self.auth:
                 build_request = requests.post(build_url,
                         data=self.parameters,
@@ -89,7 +89,7 @@ class Trigger():
 
         else:
             build_url = self.url + "/job/" + self.job + "/build"
-            print "Triggering a build via get @ ", build_url
+            print("Triggering a build via get @ %s" % build_url)
             if self.auth:
                 build_request = requests.get(build_url,
                         auth=(self.username,self.password),
@@ -101,34 +101,34 @@ class Trigger():
 
         if build_request.status_code == 201:
             queue_url =  build_request.headers['location'] +  "/api/json"
-            print "Build is queued @ ", queue_url
+            print("Build is queued @ %s" % queue_url)
         else:
-            print "Your build somehow failed"
-            print build_request.status_code
-            print build_request.text
+            print("Your build somehow failed")
+            print(build_request.status_code)
+            print(build_request.text)
             exit(1)
         return queue_url
 
     def waiting_for_job_to_start(self, queue_url):
         # Poll till we get job number
-        print ""
-        print "Starting polling for our job to start"
+        print("")
+        print("Starting polling for our job to start")
         timer = self.timer
 
         waiting_for_job = True
         while waiting_for_job:
             queue_request = requests.get(queue_url)
             if queue_request.json().get("why") != None:
-                print " . Waiting for job to start because :", queue_request.json().get("why")
+                print(" . Waiting for job to start because : %s" % queue_request.json().get("why"))
                 timer -= 1
                 sleep(self.sleep)
             else:
                 waiting_for_job = False
                 job_number = queue_request.json().get("executable").get("number")
-                print " Job is being build number: ", job_number
+                print(" Job is being build number: %d " % int(job_number))
 
             if timer == 0:
-                print " time out waiting for job to start"
+                print(" time out waiting for job to start")
                 exit(1)
         # Return the job numner of the working
         return job_number
@@ -137,7 +137,7 @@ class Trigger():
     def console_output(self, job_number):
         # Get job console till job stops
         job_url = self.url + "/job/" + self.job + "/" + str(job_number) + "/logText/progressive" + self.encoding
-        print " Getting Console output @ ", job_url
+        print(" Getting Console output @ " % job_url)
         start_at = 0
         stream_open = True
         check_job_status = 0
@@ -151,9 +151,9 @@ class Trigger():
             content_length = int(console_response.headers.get("Content-Length",-1))
 
             if console_response.status_code != 200:
-                print " Oppps we have an issue ... "
-                print console_response.content
-                print console_response.headers
+                print(" Oppps we have an issue ... ")
+                print(console_response.content)
+                print(console_response.headers)
                 exit(1)
 
             if content_length == 0:
@@ -162,7 +162,7 @@ class Trigger():
             else:
                 check_job_status = 0
                 # Print to screen console
-                print console_response.content
+                print(console_response.content)
                 sleep(self.sleep)
                 start_at = int(console_response.headers.get("X-Text-Size"))
 
@@ -173,7 +173,7 @@ class Trigger():
                 job_bulding= job_requests.json().get("building")
                 if not job_bulding:
                     # We are done
-                    print "stream ended"
+                    print("stream ended")
                     stream_open = False
                 else:
                     # Job is still running
