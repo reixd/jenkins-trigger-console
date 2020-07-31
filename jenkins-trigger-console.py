@@ -179,19 +179,30 @@ class Trigger():
                 if self.auth:
                     job_requests = console_requests.post(job_status_url, data={'start': start_at }, auth=self.auth, headers=self.crumb)
                 else:
-                    job_requests = console_requests.post(job_status_url, data={'start': start_at })                
-                if job_requests.ok and not job_requests.json().get("building"):
-                    # We are done
-                    print("stream ended")
-                    stream_open = False
+                    job_requests = console_requests.post(job_status_url, data={'start': start_at })       
+                if job_requests.ok:
+                    if not job_requests.json().get("building"):
+                        # We are done
+                        print("stream ended")
+                        stream_open = False
+                        return job_requests.json().get("result")
+                    else:
+                        # Job is still running
+                        check_job_status = 0
+                    
                 else:
-                    # Job is still running
-                    check_job_status = 0
+                    print(" Oppps we have an issue ... ")
+                    print(job_requests.content.decode())
+                    print(job_requests.headers.decode())
+                    exit(1)
 
     def main(self):
         queue_url = self.trigger_build()
         job_number = self.waiting_for_job_to_start(queue_url)
-        self.console_output(job_number)
+        result = self.console_output(job_number)
+        print("Job result: %s" % result)
+        if result in ["FAILURE", "ABORTED"]:
+            exit(1)
 
 if __name__ == '__main__':
     arguments = docopt(__doc__)
