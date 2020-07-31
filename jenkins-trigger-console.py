@@ -53,7 +53,7 @@ class Trigger():
             exit(1)
         if arguments['--parameters']:
             try:
-                self.parameters = dict(u.split("=") for u in arguments['--parameters'].split(","))
+                self.parameters = dict(u.split("=", maxsplit=1) for u in arguments['--parameters'].split(","))
             except ValueError as e:
                 print("Your parameters should be in key=value format separated by ; for multi value i.e. x=1,b=2")
                 exit(1)
